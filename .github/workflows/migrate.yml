@@ -87,7 +87,7 @@ jobs:
     needs: migrate_dev
     if: |
       always() && !cancelled() &&
-      (needs.migrate_dev.result == 'success' || needs.migrate_dev.result == 'skipped') &&
+      (needs.migrate_dev.result == 'success' || (needs.migrate_dev.result == 'skipped' && github.event_name == 'workflow_dispatch')) &&
       (github.event_name == 'push' || inputs.target_environment == 'uat' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
@@ -131,7 +131,7 @@ jobs:
     needs: migrate_uat
     if: |
       always() && !cancelled() &&
-      (needs.migrate_uat.result == 'success' || needs.migrate_uat.result == 'skipped') &&
+      (needs.migrate_uat.result == 'success' || (needs.migrate_uat.result == 'skipped' && github.event_name == 'workflow_dispatch')) &&
       (github.event_name == 'push' || inputs.target_environment == 'prd' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
