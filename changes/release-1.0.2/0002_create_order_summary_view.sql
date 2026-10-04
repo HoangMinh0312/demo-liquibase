@@ -13,5 +13,3 @@ FROM ${AppSchema}.orders o
 JOIN ${AppSchema}.customers c      ON c.id = o.customer_id
 LEFT JOIN ${AppSchema}.order_items oi ON oi.order_id = o.id
 GROUP BY o.id, o.order_number, o.status, o.ordered_at, c.code, c.full_name, o.currency;
-
--- demo: comment-only change, must NOT trigger any pipeline
