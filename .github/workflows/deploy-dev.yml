@@ -1,0 +1,59 @@
+name: Deploy dev
+
+# Chạy CHỈ khi env/dev.yml thay đổi trên main (hoặc Run workflow thủ công).
+# Đổi SQL changeset, changelog, README, workflow khác... không trigger.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "env/dev.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  LIQUIBASE_VERSION: "4.33.0"
+  JAVA_VERSION: "17"
+
+jobs:
+  deploy:
+    name: Deploy (dev)
+    runs-on: aks-runners
+    env:
+      # ---- DEV : database demo, schema dev ----
+      ENV_FILE: env/dev.yml
+      CHANGELOG_FILE: changelog.dev.yaml
+      APP_SCHEMA: dev
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read migration tag from ${{ env.ENV_FILE }}
+        run: |
+          tag=$(grep -E '^migration_tag:' "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//')
+          [ -n "$tag" ] || { echo "::error::migration_tag missing in $ENV_FILE"; exit 1; }
+          echo "MIGRATION_TAG=$tag" >> "$GITHUB_ENV"
+          echo "dev: deploying tag $tag to schema $APP_SCHEMA using $CHANGELOG_FILE"
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
+      - uses: liquibase/setup-liquibase@v3
+        with: { version: "${{ env.LIQUIBASE_VERSION }}", edition: oss }
+
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
+      - name: Show pending changesets
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+      - name: Apply migration
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
