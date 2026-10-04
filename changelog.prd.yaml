@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - property:
+      name: AppSchema
+      value: demo_app
+
+  - changeSet:
+      id: create-app-schema
+      author: demo
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE SCHEMA IF NOT EXISTS ${AppSchema};
+            splitStatements: "false"
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: release-1.0.0
+      author: demo
+      changes:
+        - tagDatabase:
+            tag: release-1.0.0
+        - sqlFile:
+            path: changes/release-1.0.0/0001_create_customers.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+        - sqlFile:
+            path: changes/release-1.0.0/0002_create_products.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+        - sqlFile:
+            path: changes/release-1.0.0/0003_seed_products.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+        - sqlFile:
+            path: changes/release-1.0.0/0004_create_orders.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+        - sqlFile:
+            path: changes/release-1.0.0/0005_create_order_items.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+      rollback:
+        - sqlFile:
+            path: changes/release-1.0.0/rollback.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+
+  - changeSet:
+      id: release-1.0.1
+      author: demo
+      changes:
+        - tagDatabase:
+            tag: release-1.0.1
+        - sqlFile:
+            path: changes/release-1.0.1/0001_add_customers_phone_and_address.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+      rollback:
+        - sqlFile:
+            path: changes/release-1.0.1/rollback.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+
+  - changeSet:
+      id: release-1.0.2
+      author: demo
+      changes:
+        - tagDatabase:
+            tag: release-1.0.2
+        - sqlFile:
+            path: changes/release-1.0.2/0001_create_order_status_history.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"
+        - sqlFile:
+            path: changes/release-1.0.2/0002_create_order_summary_view.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "false"
+      rollback:
+        - sqlFile:
+            path: changes/release-1.0.2/rollback.sql
+            dbms: postgresql
+            endDelimiter: ";"
+            splitStatements: "true"

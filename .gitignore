@@ -1,0 +1,6 @@
+# Override properties with real credentials (never commit)
+liquibase.properties.local
+.env
+
+# Liquibase generated
+*.log

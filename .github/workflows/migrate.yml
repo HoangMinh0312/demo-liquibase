@@ -1,0 +1,159 @@
+name: Run Tagged Liquibase Migration
+
+on:
+  push:
+    tags:
+      - "**"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Environment to migrate manually"
+        required: true
+        type: choice
+        options:
+          - dev
+          - uat
+          - prd
+          - all
+        default: dev
+      migration_tag:
+        description: "Existing Liquibase tag to apply"
+        required: true
+        type: string
+        default: release-1.0.2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-migration
+  cancel-in-progress: false
+
+env:
+  MIGRATION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.migration_tag || github.ref_name }}
+  LIQUIBASE_VERSION: "4.33.0"
+  JAVA_VERSION: "17"
+  # Postgres Flexible Server (private endpoint trong VNet AKS, chỉ runner aks-runners tới được)
+  PG_HOST: pg-demo-liquibase-uudjy9.postgres.database.azure.com
+  LIQUIBASE_COMMAND_USERNAME: pgadmin
+  LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+
+jobs:
+  # ------------------------------------------------------------------ dev
+  migrate_dev:
+    name: Migrate (dev)
+    if: github.event_name == 'push' || inputs.target_environment == 'dev' || inputs.target_environment == 'all'
+    runs-on: aks-runners
+    env:
+      CHANGELOG_FILE: changelog.dev.yaml
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_dev?sslmode=require
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Liquibase
+        uses: liquibase/setup-liquibase@v3
+        with:
+          version: ${{ env.LIQUIBASE_VERSION }}
+          edition: oss
+
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+
+      - name: Show pending changesets
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" status --verbose
+
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+
+      - name: Apply migration
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
+
+  # ------------------------------------------------------------------ uat
+  migrate_uat:
+    name: Migrate (uat)
+    needs: migrate_dev
+    if: |
+      always() && !cancelled() &&
+      (needs.migrate_dev.result == 'success' || needs.migrate_dev.result == 'skipped') &&
+      (github.event_name == 'push' || inputs.target_environment == 'uat' || inputs.target_environment == 'all')
+    runs-on: aks-runners
+    env:
+      CHANGELOG_FILE: changelog.uat.yaml
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_uat?sslmode=require
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Liquibase
+        uses: liquibase/setup-liquibase@v3
+        with:
+          version: ${{ env.LIQUIBASE_VERSION }}
+          edition: oss
+
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+
+      - name: Apply migration
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
+
+  # ------------------------------------------------------------------ prd
+  migrate_prd:
+    name: Migrate (prd)
+    needs: migrate_uat
+    if: |
+      always() && !cancelled() &&
+      (needs.migrate_uat.result == 'success' || needs.migrate_uat.result == 'skipped') &&
+      (github.event_name == 'push' || inputs.target_environment == 'prd' || inputs.target_environment == 'all')
+    runs-on: aks-runners
+    env:
+      CHANGELOG_FILE: changelog.prd.yaml
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_prd?sslmode=require
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Liquibase
+        uses: liquibase/setup-liquibase@v3
+        with:
+          version: ${{ env.LIQUIBASE_VERSION }}
+          edition: oss
+
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+
+      - name: Apply migration
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
