@@ -1,2 +1,2 @@
-# Liquibase tag to deploy to uat. Changing this file triggers the "uat" deploy pipeline.
+# Liquibase tag to deploy to uat (promoted from dev). Changing this file triggers the "uat" deploy pipeline.
 migration_tag: release-1.0.2
