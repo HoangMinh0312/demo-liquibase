@@ -29,7 +29,9 @@ Migrations run on the AKS self-hosted runner `aks-runners`
 │   └── prod.yml              # migration_tag to deploy to prod
 ├── .github/workflows/
 │   ├── migrate.yml           # CI: run tagged migrations on the runner (tag push)
-│   └── deploy-env.yml        # CI: deploy an env when its env/*.yml changes
+│   ├── deploy-dev.yml        # CI: deploy dev  when env/dev.yml changes
+│   ├── deploy-uat.yml        # CI: deploy uat  when env/uat.yml changes
+│   └── deploy-prod.yml       # CI: deploy prod when env/prod.yml changes
 ├── changelog.dev.yaml        # Changelog for dev environment  (schema: dev)
 ├── changelog.uat.yaml        # Changelog for uat environment  (schema: uat)
 ├── changelog.prd.yaml        # Changelog for prd environment  (schema: prd)
@@ -138,11 +140,17 @@ Liquibase tracking tables live inside the environment's schema.
 
 ### GitOps deploy per environment (`env/*.yml`)
 
-`.github/workflows/deploy-env.yml` runs **only** when one of `env/dev.yml`,
-`env/uat.yml` or `env/prod.yml` changes on `main` (path filter). Changing SQL
-changesets, changelogs or docs does not trigger it. The `detect` job diffs the
-push to find which env files changed and only the matching `deploy_<env>` jobs
-run (several can run in parallel).
+Each environment has its own workflow with its own path filter:
+
+| Workflow                | Triggers on change of | Deploys to schema |
+|-------------------------|-----------------------|-------------------|
+| `deploy-dev.yml`        | `env/dev.yml`         | `dev`             |
+| `deploy-uat.yml`        | `env/uat.yml`         | `uat`             |
+| `deploy-prod.yml`       | `env/prod.yml`        | `prd`             |
+
+Changing SQL changesets, changelogs, docs or other workflows does not trigger
+any of them. The three workflows are fully independent (separate concurrency
+groups), so changing several env files in one push deploys them in parallel.
 
 Each env file holds only the Liquibase tag to deploy; changelog, schema and
 database connection stay hardcoded per job in the workflow:
@@ -154,8 +162,8 @@ migration_tag: release-1.0.2
 
 Typical flow: add a new release (SQL + changelog), push, nothing runs. Then bump
 `migration_tag` in `env/dev.yml` → dev deploys. Later bump `env/uat.yml`, then
-`env/prod.yml` to promote. **Run workflow** with an environment name forces a
-deploy from the current file.
+`env/prod.yml` to promote. **Run workflow** on a specific `Deploy <env>` workflow
+forces a deploy from the current file.
 
 ### Triggering a release (tag based)
 
