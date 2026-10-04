@@ -54,7 +54,8 @@ jobs:
       # DB đang SAU tag -> rollback về tag; DB đang TRƯỚC tag -> update tới tag.
       - name: Decide direction (update or rollback)
         run: |
-          if liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" tag-exists --tag="${MIGRATION_TAG}" 2>&1 | grep -q "does exist"; then
+          out=$(liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" tag-exists --tag="${MIGRATION_TAG}" 2>&1); echo "$out" | grep -E "already exists|does NOT exist"
+          if echo "$out" | grep -q "already exists"; then
             echo "DIRECTION=rollback" >> "$GITHUB_ENV"; echo "Tag ${MIGRATION_TAG} already applied -> rollback anything after it"
           else
             echo "DIRECTION=update" >> "$GITHUB_ENV"; echo "Tag ${MIGRATION_TAG} not applied yet -> update to tag"
