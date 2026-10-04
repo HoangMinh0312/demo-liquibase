@@ -4,15 +4,16 @@ services:
     image: postgres:16-alpine
     container_name: demo-liquibase-pg
     environment:
-      POSTGRES_DB: demo_dev
+      POSTGRES_DB: demo
       POSTGRES_USER: demo
       POSTGRES_PASSWORD: demo
     ports:
       - "${PG_PORT:-5433}:5432"   # host port, override with PG_PORT=5432
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U demo -d demo_dev"]
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
       interval: 5s
       timeout: 3s
       retries: 10

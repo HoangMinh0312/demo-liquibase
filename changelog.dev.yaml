@@ -1,18 +1,7 @@
 databaseChangeLog:
   - property:
       name: AppSchema
-      value: public
-
-  - changeSet:
-      id: create-app-schema
-      author: demo
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: CREATE SCHEMA IF NOT EXISTS ${AppSchema};
-            splitStatements: "false"
-      rollback:
-        - empty: {}
+      value: dev
 
   - changeSet:
       id: release-1.0.0

@@ -44,9 +44,10 @@ jobs:
     if: github.event_name == 'push' || inputs.target_environment == 'dev' || inputs.target_environment == 'all'
     runs-on: aks-runners
     env:
-      # ---- DEV ----
+      # ---- DEV : database demo, schema dev ----
       CHANGELOG_FILE: changelog.dev.yaml
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_dev?sslmode=require
+      APP_SCHEMA: dev
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
@@ -66,19 +67,19 @@ jobs:
           edition: oss
 
       - name: Validate changelog
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
 
       - name: Show pending changesets
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" status --verbose
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
 
       - name: Preview SQL
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
 
       - name: Apply migration
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
 
       - name: Show history
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
 
   # ------------------------------------------------------------------ uat
   migrate_uat:
@@ -90,9 +91,10 @@ jobs:
       (github.event_name == 'push' || inputs.target_environment == 'uat' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
-      # ---- UAT ----
+      # ---- UAT : database demo, schema uat ----
       CHANGELOG_FILE: changelog.uat.yaml
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_uat?sslmode=require
+      APP_SCHEMA: uat
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
@@ -112,16 +114,16 @@ jobs:
           edition: oss
 
       - name: Validate changelog
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
 
       - name: Preview SQL
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
 
       - name: Apply migration
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
 
       - name: Show history
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
 
   # ------------------------------------------------------------------ prd
   migrate_prd:
@@ -133,9 +135,10 @@ jobs:
       (github.event_name == 'push' || inputs.target_environment == 'prd' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
-      # ---- PRD ----
+      # ---- PRD : database demo, schema prd ----
       CHANGELOG_FILE: changelog.prd.yaml
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_prd?sslmode=require
+      APP_SCHEMA: prd
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
@@ -155,13 +158,13 @@ jobs:
           edition: oss
 
       - name: Validate changelog
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" validate
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
 
       - name: Preview SQL
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
 
       - name: Apply migration
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" update-to-tag --tag="${MIGRATION_TAG}"
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
 
       - name: Show history
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history

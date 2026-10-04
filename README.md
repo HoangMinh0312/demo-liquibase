@@ -25,22 +25,32 @@ Migrations run on the AKS self-hosted runner `aks-runners`
 │       └── rollback.sql
 ├── .github/workflows/
 │   └── migrate.yml           # CI: run tagged migrations on the runner
-├── changelog.dev.yaml        # Changelog for dev environment  (schema: public)
-├── changelog.uat.yaml        # Changelog for uat environment  (schema: demo_app)
-├── changelog.prd.yaml        # Changelog for prd environment  (schema: demo_app)
+├── changelog.dev.yaml        # Changelog for dev environment  (schema: dev)
+├── changelog.uat.yaml        # Changelog for uat environment  (schema: uat)
+├── changelog.prd.yaml        # Changelog for prd environment  (schema: prd)
+├── docker/initdb/            # Local only: creates dev/uat/prd schemas
 ├── docker-compose.yml        # Local Postgres for development
 └── liquibase.properties
 ```
 
+All environments share **one database** (`demo`) and are isolated by **schema**:
+`dev`, `uat`, `prd`. Each changelog sets the `${AppSchema}` property to its
+schema, and Liquibase is run with `--default-schema-name` and
+`--liquibase-schema-name` set to that schema, so the tracking tables
+(`databasechangelog`, `databasechangeloglock`) also live inside the
+environment's schema. The schemas themselves are created by infrastructure
+(Terraform Kubernetes Job in `../aks/postgres_init.tf`; `docker/initdb` locally),
+not by the changelog.
+
 All SQL files are idempotent (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`,
-`CREATE OR REPLACE`) and reference the target schema through the
-`${AppSchema}` changelog property.
+`CREATE OR REPLACE`).
 
 ## Environment Variables
 
 | Variable                           | Description                           | Example                                                     |
 |------------------------------------|---------------------------------------|-------------------------------------------------------------|
 | `LIQUIBASE_COMMAND_URL`            | JDBC connection string for PostgreSQL | `jdbc:postgresql://mydb.postgres.database.azure.com:5432/demo?sslmode=require` |
+| `APP_SCHEMA`                       | Target schema (`dev`/`uat`/`prd`), passed as `--default-schema-name` and `--liquibase-schema-name` | `dev` |
 | `LIQUIBASE_COMMAND_USERNAME`       | Database username                     | `demo`                                                      |
 | `LIQUIBASE_COMMAND_PASSWORD`       | Database password                     | `*****`                                                     |
 | `LIQUIBASE_COMMAND_CHANGELOG_FILE` | Which changelog to run                | `changelog.dev.yaml` / `changelog.prd.yaml`                 |
@@ -52,26 +62,28 @@ Start a local Postgres and run migrations with a local Liquibase installation:
 ```bash
 docker compose up -d        # Postgres on localhost:5433 (set PG_PORT to change)
 
-export LIQUIBASE_COMMAND_URL="jdbc:postgresql://localhost:5433/demo_dev"
+export LIQUIBASE_COMMAND_URL="jdbc:postgresql://localhost:5433/demo"
 export LIQUIBASE_COMMAND_USERNAME="demo"
 export LIQUIBASE_COMMAND_PASSWORD="demo"
-export LIQUIBASE_COMMAND_CHANGELOG_FILE="changelog.dev.yaml"
+export APP_SCHEMA=dev                        # dev | uat | prd
+export CHANGELOG_FILE="changelog.$APP_SCHEMA.yaml"
+LB="liquibase --changelog-file=$CHANGELOG_FILE --default-schema-name=$APP_SCHEMA --liquibase-schema-name=$APP_SCHEMA"
 
-liquibase --changelog-file="$LIQUIBASE_COMMAND_CHANGELOG_FILE" validate
-liquibase --changelog-file="$LIQUIBASE_COMMAND_CHANGELOG_FILE" update
-liquibase --changelog-file="$LIQUIBASE_COMMAND_CHANGELOG_FILE" history
+$LB validate
+$LB update
+$LB history
 ```
 
 Apply up to a specific release only:
 
 ```bash
-liquibase --changelog-file="changelog.dev.yaml" update-to-tag --tag=release-1.0.1
+$LB update-to-tag --tag=release-1.0.1
 ```
 
 Rollback a release:
 
 ```bash
-liquibase --changelog-file="changelog.dev.yaml" rollback --tag=release-1.0.0
+$LB rollback --tag=release-1.0.0
 ```
 
 Without a local Liquibase install, use the official image:
@@ -79,9 +91,10 @@ Without a local Liquibase install, use the official image:
 ```bash
 docker run --rm --network demo-liquibase_default \
   -v "$PWD":/liquibase/changelog -w /liquibase/changelog \
-  -e LIQUIBASE_COMMAND_URL="jdbc:postgresql://postgres:5432/demo_dev" \
+  -e LIQUIBASE_COMMAND_URL="jdbc:postgresql://postgres:5432/demo" \
   -e LIQUIBASE_COMMAND_USERNAME=demo -e LIQUIBASE_COMMAND_PASSWORD=demo \
-  liquibase/liquibase:4.33 --changelog-file=changelog.dev.yaml update
+  liquibase/liquibase:4.33 --changelog-file=changelog.dev.yaml \
+  --default-schema-name=dev --liquibase-schema-name=dev update
 ```
 
 ## CI/CD Pipeline
@@ -108,15 +121,15 @@ For a single-environment rerun, use **Run workflow** and select
 `target_environment: dev|uat|prd|all` plus an existing Liquibase tag. Tag pushes
 run all environments; `MIGRATION_TAG` is set from the pushed tag.
 
-| Job           | Changelog file       | Database   | Schema     |
-|---------------|----------------------|------------|------------|
-| `migrate_dev` | `changelog.dev.yaml` | `demo_dev` | `public`   |
-| `migrate_uat` | `changelog.uat.yaml` | `demo_uat` | `demo_app` |
-| `migrate_prd` | `changelog.prd.yaml` | `demo_prd` | `demo_app` |
+| Job           | Changelog file       | Database | Schema |
+|---------------|----------------------|----------|--------|
+| `migrate_dev` | `changelog.dev.yaml` | `demo`   | `dev`  |
+| `migrate_uat` | `changelog.uat.yaml` | `demo`   | `uat`  |
+| `migrate_prd` | `changelog.prd.yaml` | `demo`   | `prd`  |
 
-The UAT and PRD changelogs create objects under the `demo_app` schema (created
-by the first changeset). Liquibase tracking tables (`databasechangelog`,
-`databasechangeloglock`) always live in `public`.
+Every Liquibase command runs with `--default-schema-name=$APP_SCHEMA
+--liquibase-schema-name=$APP_SCHEMA`, so both the application objects and the
+Liquibase tracking tables live inside the environment's schema.
 
 ### Triggering a release
 
