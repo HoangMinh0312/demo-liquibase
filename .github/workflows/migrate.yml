@@ -33,10 +33,9 @@ env:
   MIGRATION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.migration_tag || github.ref_name }}
   LIQUIBASE_VERSION: "4.33.0"
   JAVA_VERSION: "17"
-  # Postgres Flexible Server (private endpoint trong VNet AKS, chỉ runner aks-runners tới được)
-  PG_HOST: pg-demo-liquibase-uudjy9.postgres.database.azure.com
-  LIQUIBASE_COMMAND_USERNAME: pgadmin
-  LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+
+# Kết nối DB được khai báo theo từng môi trường trong block `env` của job tương ứng.
+# Postgres Flexible Server nằm sau private endpoint trong VNet AKS, chỉ runner aks-runners tới được.
 
 jobs:
   # ------------------------------------------------------------------ dev
@@ -45,8 +44,11 @@ jobs:
     if: github.event_name == 'push' || inputs.target_environment == 'dev' || inputs.target_environment == 'all'
     runs-on: aks-runners
     env:
+      # ---- DEV ----
       CHANGELOG_FILE: changelog.dev.yaml
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_dev?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,8 +90,11 @@ jobs:
       (github.event_name == 'push' || inputs.target_environment == 'uat' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
+      # ---- UAT ----
       CHANGELOG_FILE: changelog.uat.yaml
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_uat?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -128,8 +133,11 @@ jobs:
       (github.event_name == 'push' || inputs.target_environment == 'prd' || inputs.target_environment == 'all')
     runs-on: aks-runners
     env:
+      # ---- PRD ----
       CHANGELOG_FILE: changelog.prd.yaml
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo_prd?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
