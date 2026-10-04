@@ -113,7 +113,7 @@ a git tag is pushed. It runs Liquibase on the AKS `aks-runners` scale set
 through its private endpoint inside the AKS VNet.
 
 Connection details are **hardcoded in the workflow** (demo only): host
-`pg-demo-liquibase-uudjy9.postgres.database.azure.com`, user `pgadmin`. No
+`pg-demo-liquibase-opd8e6.postgres.database.azure.com`, user `pgadmin`. No
 GitHub Environments, variables or secrets are required.
 
 Jobs run sequentially `dev → uat → prd`; each job:

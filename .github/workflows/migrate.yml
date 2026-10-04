@@ -47,7 +47,7 @@ jobs:
       # ---- DEV : database demo, schema dev ----
       CHANGELOG_FILE: changelog.dev.yaml
       APP_SCHEMA: dev
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
@@ -94,7 +94,7 @@ jobs:
       # ---- UAT : database demo, schema uat ----
       CHANGELOG_FILE: changelog.uat.yaml
       APP_SCHEMA: uat
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
@@ -138,7 +138,7 @@ jobs:
       # ---- PRD : database demo, schema prd ----
       CHANGELOG_FILE: changelog.prd.yaml
       APP_SCHEMA: prd
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
       LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
