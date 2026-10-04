@@ -24,9 +24,9 @@ Migrations run on the AKS self-hosted runner `aks-runners`
 │       ├── 0002_create_order_summary_view.sql
 │       └── rollback.sql
 ├── env/
-│   ├── dev.yml               # GitOps config for dev  (tag to deploy, schema, DB)
-│   ├── uat.yml               # GitOps config for uat
-│   └── prod.yml              # GitOps config for prod
+│   ├── dev.yml               # migration_tag to deploy to dev
+│   ├── uat.yml               # migration_tag to deploy to uat
+│   └── prod.yml              # migration_tag to deploy to prod
 ├── .github/workflows/
 │   ├── migrate.yml           # CI: run tagged migrations on the runner (tag push)
 │   └── deploy-env.yml        # CI: deploy an env when its env/*.yml changes
@@ -144,17 +144,12 @@ changesets, changelogs or docs does not trigger it. The `detect` job diffs the
 push to find which env files changed and only the matching `deploy_<env>` jobs
 run (several can run in parallel).
 
-Each env file is the single source of truth for that environment:
+Each env file holds only the Liquibase tag to deploy; changelog, schema and
+database connection stay hardcoded per job in the workflow:
 
 ```yaml
-environment: dev
-changelog_file: changelog.dev.yaml
-schema: dev
-migration_tag: release-1.0.2   # Liquibase tag to deploy
-dry_run: false                 # true = validate + preview SQL only
-db_url: jdbc:postgresql://<host>:5432/demo?sslmode=require
-db_username: pgadmin
-db_password: "..."
+# env/dev.yml
+migration_tag: release-1.0.2
 ```
 
 Typical flow: add a new release (SQL + changelog), push, nothing runs. Then bump

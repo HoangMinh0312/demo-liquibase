@@ -66,22 +66,21 @@ jobs:
     if: needs.detect.outputs.dev == 'true'
     runs-on: aks-runners
     env:
+      # ---- DEV : database demo, schema dev ----
       ENV_FILE: env/dev.yml
+      CHANGELOG_FILE: changelog.dev.yaml
+      APP_SCHEMA: dev
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - uses: actions/checkout@v4
-      - name: Load env config
-        id: cfg
+      - name: Read migration tag from ${{ env.ENV_FILE }}
         run: |
-          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
-          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
-          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
-          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
-          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
-          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
-          echo "::add-mask::$(get db_password)"
-          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+          tag=$(grep -E '^migration_tag:' "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//')
+          [ -n "$tag" ] || { echo "::error::migration_tag missing in $ENV_FILE"; exit 1; }
+          echo "MIGRATION_TAG=$tag" >> "$GITHUB_ENV"
+          echo "dev: deploying tag $tag to schema $APP_SCHEMA using $CHANGELOG_FILE"
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
       - uses: liquibase/setup-liquibase@v3
@@ -93,7 +92,6 @@ jobs:
       - name: Preview SQL
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
       - name: Apply migration
-        if: env.DRY_RUN != 'true'
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
       - name: Show history
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
@@ -104,22 +102,21 @@ jobs:
     if: needs.detect.outputs.uat == 'true'
     runs-on: aks-runners
     env:
+      # ---- UAT : database demo, schema uat ----
       ENV_FILE: env/uat.yml
+      CHANGELOG_FILE: changelog.uat.yaml
+      APP_SCHEMA: uat
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - uses: actions/checkout@v4
-      - name: Load env config
-        id: cfg
+      - name: Read migration tag from ${{ env.ENV_FILE }}
         run: |
-          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
-          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
-          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
-          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
-          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
-          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
-          echo "::add-mask::$(get db_password)"
-          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+          tag=$(grep -E '^migration_tag:' "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//')
+          [ -n "$tag" ] || { echo "::error::migration_tag missing in $ENV_FILE"; exit 1; }
+          echo "MIGRATION_TAG=$tag" >> "$GITHUB_ENV"
+          echo "uat: deploying tag $tag to schema $APP_SCHEMA using $CHANGELOG_FILE"
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
       - uses: liquibase/setup-liquibase@v3
@@ -131,7 +128,6 @@ jobs:
       - name: Preview SQL
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
       - name: Apply migration
-        if: env.DRY_RUN != 'true'
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
       - name: Show history
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
@@ -142,22 +138,21 @@ jobs:
     if: needs.detect.outputs.prod == 'true'
     runs-on: aks-runners
     env:
+      # ---- PROD : database demo, schema prd ----
       ENV_FILE: env/prod.yml
+      CHANGELOG_FILE: changelog.prd.yaml
+      APP_SCHEMA: prd
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
+      LIQUIBASE_COMMAND_USERNAME: pgadmin
+      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
     steps:
       - uses: actions/checkout@v4
-      - name: Load env config
-        id: cfg
+      - name: Read migration tag from ${{ env.ENV_FILE }}
         run: |
-          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
-          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
-          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
-          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
-          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
-          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
-          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
-          echo "::add-mask::$(get db_password)"
-          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+          tag=$(grep -E '^migration_tag:' "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//')
+          [ -n "$tag" ] || { echo "::error::migration_tag missing in $ENV_FILE"; exit 1; }
+          echo "MIGRATION_TAG=$tag" >> "$GITHUB_ENV"
+          echo "prod: deploying tag $tag to schema $APP_SCHEMA using $CHANGELOG_FILE"
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
       - uses: liquibase/setup-liquibase@v3
@@ -169,7 +164,6 @@ jobs:
       - name: Preview SQL
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
       - name: Apply migration
-        if: env.DRY_RUN != 'true'
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
       - name: Show history
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history

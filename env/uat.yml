@@ -1,12 +1,2 @@
-# Environment config for uat. Changing this file triggers the "uat" deploy pipeline
-# (.github/workflows/deploy-env.yml). Changing SQL changesets alone does NOT trigger anything.
-environment: uat
-changelog_file: changelog.uat.yaml
-schema: uat
-# Liquibase tag to deploy (must exist as a tagDatabase changeset in the changelog)
+# Liquibase tag to deploy to uat. Changing this file triggers the "uat" deploy pipeline.
 migration_tag: release-1.0.2
-# true = validate + preview SQL only, no update
-dry_run: false
-db_url: jdbc:postgresql://pg-demo-liquibase-uudjy9.postgres.database.azure.com:5432/demo?sslmode=require
-db_username: pgadmin
-db_password: "H#ng1234"
