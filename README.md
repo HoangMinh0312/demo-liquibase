@@ -23,8 +23,13 @@ Migrations run on the AKS self-hosted runner `aks-runners`
 │       ├── 0001_create_order_status_history.sql
 │       ├── 0002_create_order_summary_view.sql
 │       └── rollback.sql
+├── env/
+│   ├── dev.yml               # GitOps config for dev  (tag to deploy, schema, DB)
+│   ├── uat.yml               # GitOps config for uat
+│   └── prod.yml              # GitOps config for prod
 ├── .github/workflows/
-│   └── migrate.yml           # CI: run tagged migrations on the runner
+│   ├── migrate.yml           # CI: run tagged migrations on the runner (tag push)
+│   └── deploy-env.yml        # CI: deploy an env when its env/*.yml changes
 ├── changelog.dev.yaml        # Changelog for dev environment  (schema: dev)
 ├── changelog.uat.yaml        # Changelog for uat environment  (schema: uat)
 ├── changelog.prd.yaml        # Changelog for prd environment  (schema: prd)
@@ -131,7 +136,33 @@ Every Liquibase command runs with `--default-schema-name=$APP_SCHEMA
 --liquibase-schema-name=$APP_SCHEMA`, so both the application objects and the
 Liquibase tracking tables live inside the environment's schema.
 
-### Triggering a release
+### GitOps deploy per environment (`env/*.yml`)
+
+`.github/workflows/deploy-env.yml` runs **only** when one of `env/dev.yml`,
+`env/uat.yml` or `env/prod.yml` changes on `main` (path filter). Changing SQL
+changesets, changelogs or docs does not trigger it. The `detect` job diffs the
+push to find which env files changed and only the matching `deploy_<env>` jobs
+run (several can run in parallel).
+
+Each env file is the single source of truth for that environment:
+
+```yaml
+environment: dev
+changelog_file: changelog.dev.yaml
+schema: dev
+migration_tag: release-1.0.2   # Liquibase tag to deploy
+dry_run: false                 # true = validate + preview SQL only
+db_url: jdbc:postgresql://<host>:5432/demo?sslmode=require
+db_username: pgadmin
+db_password: "..."
+```
+
+Typical flow: add a new release (SQL + changelog), push, nothing runs. Then bump
+`migration_tag` in `env/dev.yml` → dev deploys. Later bump `env/uat.yml`, then
+`env/prod.yml` to promote. **Run workflow** with an environment name forces a
+deploy from the current file.
+
+### Triggering a release (tag based)
 
 ```bash
 git tag release-1.0.2

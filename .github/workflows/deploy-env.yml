@@ -1,0 +1,175 @@
+name: Deploy Environment (env/*.yml)
+
+# Trigger CHỈ khi file cấu hình môi trường thay đổi. Đổi SQL changeset, changelog, README... không chạy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "env/dev.yml"
+      - "env/uat.yml"
+      - "env/prod.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Force deploy an environment from its env/*.yml"
+        required: true
+        type: choice
+        options: [dev, uat, prod]
+        default: dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-env
+  cancel-in-progress: false
+
+env:
+  LIQUIBASE_VERSION: "4.33.0"
+  JAVA_VERSION: "17"
+
+jobs:
+  detect:
+    name: Detect changed env files
+    runs-on: aks-runners
+    outputs:
+      dev: ${{ steps.changes.outputs.dev }}
+      uat: ${{ steps.changes.outputs.uat }}
+      prod: ${{ steps.changes.outputs.prod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine which env files changed
+        id: changes
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            changed="env/${{ inputs.environment }}.yml"
+          else
+            before="${{ github.event.before }}"
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before" 2>/dev/null; then
+              before="$(git rev-parse HEAD~1 2>/dev/null || git hash-object -t tree /dev/null)"
+            fi
+            changed="$(git diff --name-only "$before" "${{ github.sha }}" -- env/ || true)"
+          fi
+          echo "Changed env files:"; echo "$changed"
+          for e in dev uat prod; do
+            if echo "$changed" | grep -qx "env/$e.yml"; then echo "$e=true" >> "$GITHUB_OUTPUT"; else echo "$e=false" >> "$GITHUB_OUTPUT"; fi
+          done
+
+  deploy_dev:
+    name: Deploy (dev)
+    needs: detect
+    if: needs.detect.outputs.dev == 'true'
+    runs-on: aks-runners
+    env:
+      ENV_FILE: env/dev.yml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load env config
+        id: cfg
+        run: |
+          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
+          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
+          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
+          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
+          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
+          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
+          echo "::add-mask::$(get db_password)"
+          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
+      - uses: liquibase/setup-liquibase@v3
+        with: { version: "${{ env.LIQUIBASE_VERSION }}", edition: oss }
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
+      - name: Show pending changesets
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+      - name: Apply migration
+        if: env.DRY_RUN != 'true'
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
+
+  deploy_uat:
+    name: Deploy (uat)
+    needs: detect
+    if: needs.detect.outputs.uat == 'true'
+    runs-on: aks-runners
+    env:
+      ENV_FILE: env/uat.yml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load env config
+        id: cfg
+        run: |
+          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
+          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
+          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
+          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
+          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
+          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
+          echo "::add-mask::$(get db_password)"
+          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
+      - uses: liquibase/setup-liquibase@v3
+        with: { version: "${{ env.LIQUIBASE_VERSION }}", edition: oss }
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
+      - name: Show pending changesets
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+      - name: Apply migration
+        if: env.DRY_RUN != 'true'
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
+
+  deploy_prod:
+    name: Deploy (prod)
+    needs: detect
+    if: needs.detect.outputs.prod == 'true'
+    runs-on: aks-runners
+    env:
+      ENV_FILE: env/prod.yml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load env config
+        id: cfg
+        run: |
+          get() { grep -E "^$1:" "$ENV_FILE" | sed -E 's/^[^:]+:[[:space:]]*//; s/^"//; s/"$//'; }
+          echo "LIQUIBASE_COMMAND_URL=$(get db_url)"           >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_USERNAME=$(get db_username)" >> "$GITHUB_ENV"
+          echo "LIQUIBASE_COMMAND_PASSWORD=$(get db_password)" >> "$GITHUB_ENV"
+          echo "CHANGELOG_FILE=$(get changelog_file)"          >> "$GITHUB_ENV"
+          echo "APP_SCHEMA=$(get schema)"                      >> "$GITHUB_ENV"
+          echo "MIGRATION_TAG=$(get migration_tag)"            >> "$GITHUB_ENV"
+          echo "DRY_RUN=$(get dry_run)"                        >> "$GITHUB_ENV"
+          echo "::add-mask::$(get db_password)"
+          echo "env=$(get environment) changelog=$(get changelog_file) schema=$(get schema) tag=$(get migration_tag) dry_run=$(get dry_run)"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "${{ env.JAVA_VERSION }}" }
+      - uses: liquibase/setup-liquibase@v3
+        with: { version: "${{ env.LIQUIBASE_VERSION }}", edition: oss }
+      - name: Validate changelog
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
+      - name: Show pending changesets
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
+      - name: Preview SQL
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+      - name: Apply migration
+        if: env.DRY_RUN != 'true'
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+      - name: Show history
+        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history
