@@ -51,9 +51,27 @@ jobs:
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" validate
       - name: Show pending changesets
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" status --verbose
+      # DB đang SAU tag -> rollback về tag; DB đang TRƯỚC tag -> update tới tag.
+      - name: Decide direction (update or rollback)
+        run: |
+          if liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" tag-exists --tag="${MIGRATION_TAG}" 2>&1 | grep -q "does exist"; then
+            echo "DIRECTION=rollback" >> "$GITHUB_ENV"; echo "Tag ${MIGRATION_TAG} already applied -> rollback anything after it"
+          else
+            echo "DIRECTION=update" >> "$GITHUB_ENV"; echo "Tag ${MIGRATION_TAG} not applied yet -> update to tag"
+          fi
       - name: Preview SQL
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+        run: |
+          if [ "$DIRECTION" = "rollback" ]; then
+            liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" rollback-sql --tag="${MIGRATION_TAG}"
+          else
+            liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag-sql --tag="${MIGRATION_TAG}"
+          fi
       - name: Apply migration
-        run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+        run: |
+          if [ "$DIRECTION" = "rollback" ]; then
+            liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" rollback --tag="${MIGRATION_TAG}"
+          else
+            liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" update-to-tag --tag="${MIGRATION_TAG}"
+          fi
       - name: Show history
         run: liquibase --changelog-file="${CHANGELOG_FILE}" --default-schema-name="${APP_SCHEMA}" --liquibase-schema-name="${APP_SCHEMA}" history

@@ -160,6 +160,11 @@ database connection stay hardcoded per job in the workflow:
 migration_tag: release-1.0.2
 ```
 
+`migration_tag` is the **desired state** of the environment. The job checks
+whether the tag is already applied (`tag-exists`): if the database is behind the
+tag it runs `update-to-tag`, if it is ahead it runs `rollback --tag`, so lowering
+the tag rolls the environment back.
+
 Typical flow: add a new release (SQL + changelog), push, nothing runs. Then bump
 `migration_tag` in `env/dev.yml` → dev deploys. Later bump `env/uat.yml`, then
 `env/prod.yml` to promote. **Run workflow** on a specific `Deploy <env>` workflow
