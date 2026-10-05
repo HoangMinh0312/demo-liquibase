@@ -49,7 +49,7 @@ jobs:
       APP_SCHEMA: dev
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
-      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+      LIQUIBASE_COMMAND_PASSWORD: ${{ secrets.LIQUIBASE_COMMAND_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,7 +96,7 @@ jobs:
       APP_SCHEMA: uat
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
-      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+      LIQUIBASE_COMMAND_PASSWORD: ${{ secrets.LIQUIBASE_COMMAND_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -140,7 +140,7 @@ jobs:
       APP_SCHEMA: prd
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://pg-demo-liquibase-opd8e6.postgres.database.azure.com:5432/demo?sslmode=require
       LIQUIBASE_COMMAND_USERNAME: pgadmin
-      LIQUIBASE_COMMAND_PASSWORD: "H#ng1234"
+      LIQUIBASE_COMMAND_PASSWORD: ${{ secrets.LIQUIBASE_COMMAND_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
