@@ -211,3 +211,8 @@ name has to match a `release-x.y.z` changeset id.
    ```
 
 3. **Never modify** an existing changeset — always add a new release.
+
+
+
+
+kubectl -n arc-runners get pod -w 
