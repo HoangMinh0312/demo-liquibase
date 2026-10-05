@@ -1,2 +1,2 @@
-# Liquibase tag to deploy to dev. Changing this file triggers the "dev" deploy pipeline 
-migration_tag: release-1.0.0
+# Liquibase tag to deploy to dev. Changing this file triggers the "dev" deploy pipeline
+migration_tag: release-1.0.1
