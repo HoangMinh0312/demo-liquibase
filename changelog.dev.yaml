@@ -24,16 +24,6 @@ databaseChangeLog:
             dbms: postgresql
             endDelimiter: ";"
             splitStatements: "true"
-        - sqlFile:
-            path: changes/release-1.0.0/0004_create_orders.sql
-            dbms: postgresql
-            endDelimiter: ";"
-            splitStatements: "true"
-        - sqlFile:
-            path: changes/release-1.0.0/0005_create_order_items.sql
-            dbms: postgresql
-            endDelimiter: ";"
-            splitStatements: "true"
       rollback:
         - sqlFile:
             path: changes/release-1.0.0/rollback.sql
